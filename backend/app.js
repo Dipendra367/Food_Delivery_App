@@ -67,6 +67,7 @@ app.use('/api/public', require('./routes/public'));
 app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/geocoding', require('./routes/geocoding'));
 
 // Health Check
 app.get('/', (req, res) => {

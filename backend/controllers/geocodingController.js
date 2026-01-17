@@ -1,4 +1,4 @@
-// backend/services/geocoding.js
+// backend/controllers/geocodingController.js
 const axios = require('axios');
 
 /**
@@ -31,18 +31,25 @@ async function rateLimit() {
 
 /**
  * Convert address to coordinates (forward geocoding)
- * @param {Object} address - Address object with street, city, area
- * @returns {Object} - { lat, lng } or null if not found
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
  */
-async function geocodeAddress(address) {
+exports.forwardGeocode = async (req, res) => {
     try {
+        const { street, area, city } = req.query;
+        
+        // Basic validation
+        if (!street && !area && !city) {
+            return res.status(400).json({ message: 'At least one address field (street, area, city) is required' });
+        }
+
         await rateLimit();
 
         // Build search query - prioritize Nepal locations
         const searchParts = [];
-        if (address.street) searchParts.push(address.street);
-        if (address.area) searchParts.push(address.area);
-        if (address.city) searchParts.push(address.city);
+        if (street) searchParts.push(street);
+        if (area) searchParts.push(area);
+        if (city) searchParts.push(city);
         searchParts.push('Nepal'); // Always include Nepal for better results
 
         const query = searchParts.join(', ');
@@ -63,27 +70,32 @@ async function geocodeAddress(address) {
 
         if (response.data && response.data.length > 0) {
             const result = response.data[0];
-            return {
+            return res.json({
                 lat: parseFloat(result.lat),
                 lng: parseFloat(result.lon)
-            };
+            });
         }
 
-        return null;
+        return res.status(404).json({ message: 'Location not found' });
     } catch (error) {
         console.error('Geocoding error:', error.message);
-        return null;
+        return res.status(500).json({ message: 'Geocoding service unavailable' });
     }
-}
+};
 
 /**
  * Convert coordinates to address (reverse geocoding)
- * @param {Number} lat - Latitude
- * @param {Number} lng - Longitude
- * @returns {Object} - Address object or null if not found
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
  */
-async function reverseGeocode(lat, lng) {
+exports.reverseGeocode = async (req, res) => {
     try {
+        const { lat, lng } = req.query;
+
+        if (!lat || !lng) {
+            return res.status(400).json({ message: 'Latitude and longitude are required' });
+        }
+
         await rateLimit();
 
         const response = await axios.get(`${NOMINATIM_BASE_URL}/reverse`, {
@@ -101,28 +113,29 @@ async function reverseGeocode(lat, lng) {
 
         if (response.data && response.data.address) {
             const addr = response.data.address;
-            return {
+            return res.json({
                 street: addr.road || addr.neighbourhood || '',
                 area: addr.suburb || addr.neighbourhood || addr.village || '',
                 city: addr.city || addr.town || addr.municipality || 'Kathmandu',
                 country: addr.country || 'Nepal',
                 displayName: response.data.display_name
-            };
+            });
         }
 
-        return null;
+        return res.status(404).json({ message: 'Address not found' });
     } catch (error) {
         console.error('Reverse geocoding error:', error.message);
-        return null;
+        return res.status(500).json({ message: 'Geocoding service unavailable' });
     }
-}
+};
 
 /**
  * Get default coordinates for major Nepal cities
  * @param {String} city - City name
- * @returns {Object} - { lat, lng }
  */
-function getDefaultCityCoordinates(city) {
+exports.getDefaultCityCoordinates = (req, res) => {
+    const { city } = req.params;
+    
     const cityCoords = {
         'kathmandu': { lat: 27.7172, lng: 85.3240 },
         'pokhara': { lat: 28.2096, lng: 83.9856 },
@@ -136,12 +149,8 @@ function getDefaultCityCoordinates(city) {
         'butwal': { lat: 27.7000, lng: 83.4500 }
     };
 
-    const normalizedCity = city.toLowerCase().trim();
-    return cityCoords[normalizedCity] || cityCoords['kathmandu']; // Default to Kathmandu
-}
+    const normalizedCity = city ? city.toLowerCase().trim() : 'kathmandu';
+    const coords = cityCoords[normalizedCity] || cityCoords['kathmandu']; // Default to Kathmandu
 
-module.exports = {
-    geocodeAddress,
-    reverseGeocode,
-    getDefaultCityCoordinates
+    res.json(coords);
 };
