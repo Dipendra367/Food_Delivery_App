@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Product Edit - Performance Test">
+      <stringProp name="TestPlan.comments">Performance testing for Product Edit API</stringProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="HOST" elementType="Argument">
+            <stringProp name="Argument.name">HOST</stringProp>
+            <stringProp name="Argument.value">localhost</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="PORT" elementType="Argument">
+            <stringProp name="Argument.name">PORT</stringProp>
+            <stringProp name="Argument.value">5050</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+    </TestPlan>
+    <hashTree>
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="setUp Thread Group" enabled="true">
+        <intProp name="ThreadGroup.num_threads">1</intProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Setup: Login and Get Data" enabled="true">
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="script">import groovy.json.JsonSlurper
+
+// Variables from Test Plan
+String host = vars.get(&quot;HOST&quot;)
+String port = vars.get(&quot;PORT&quot;)
+
+// 1. Admin Login
+URL loginUrl = new URL(&quot;http://&quot; + host + &quot;:&quot; + port + &quot;/api/auth/login&quot;)
+HttpURLConnection loginConn = (HttpURLConnection) loginUrl.openConnection()
+loginConn.setRequestMethod(&quot;POST&quot;)
+loginConn.setRequestProperty(&quot;Content-Type&quot;, &quot;application/json&quot;)
+loginConn.setDoOutput(true)
+
+String loginPayload = &apos;{&quot;email&quot;: &quot;admin@fooddelivery.com&quot;, &quot;password&quot;: &quot;admin123&quot;}&apos;
+loginConn.getOutputStream().write(loginPayload.getBytes(&quot;UTF-8&quot;))
+
+if (loginConn.getResponseCode() == 200) {
+    def response = new JsonSlurper().parse(loginConn.getInputStream())
+    props.put(&quot;ADMIN_TOKEN&quot;, response.token)
+    log.info(&quot;Setup: Admin setup login successful.&quot;)
+} else {
+    log.error(&quot;Setup: Login failed! Code: &quot; + loginConn.getResponseCode())
+    throw new Exception(&quot;Setup login failed&quot;)
+}
+
+// 2. Get Products to find ID
+URL productUrl = new URL(&quot;http://&quot; + host + &quot;:&quot; + port + &quot;/api/products&quot;)
+HttpURLConnection prodConn = (HttpURLConnection) productUrl.openConnection()
+prodConn.setRequestMethod(&quot;GET&quot;)
+
+if (prodConn.getResponseCode() == 200) {
+    def response = new JsonSlurper().parse(prodConn.getInputStream())
+    if (response.size() &gt; 0) {
+        def product = response[0]
+        props.put(&quot;PRODUCT_ID&quot;, product._id)
+        
+        // Handle restaurantId which can be object or string
+        def restId = product.restaurantId instanceof Map ? product.restaurantId._id : product.restaurantId
+        props.put(&quot;RESTAURANT_ID&quot;, restId)
+        
+        log.info(&quot;Setup: IDs fetched. Product=&quot; + product._id + &quot;, Restaurant=&quot; + restId)
+    } else {
+        throw new Exception(&quot;Setup: No products found!&quot;)
+    }
+} else {
+    throw new Exception(&quot;Setup: Get products failed! Code: &quot; + prodConn.getResponseCode())
+}</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Product Edit - 50 Variations">
+        <intProp name="ThreadGroup.num_threads">50</intProp>
+        <intProp name="ThreadGroup.ramp_time">10</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Generate Dynamic Payload">
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="script">import groovy.json.JsonOutput
+
+int threadNum = ctx.getThreadNum()
+
+def validNames = [&apos;Momo&apos;, &apos;Thukpa&apos;, &apos;Sel Roti&apos;, &apos;Samosa&apos;, &apos;Chowmein&apos;, &apos;Dal Bhat&apos;, &apos;Biryani&apos;, &apos;Paneer Tikka&apos;, &apos;Chicken Curry&apos;, &apos;Naan&apos;]
+def invalidNames = [&apos;&apos;, &apos;   &apos;, &apos;123&apos;, &apos;a&apos;, &apos;VeryLongName&apos;, &apos;NewLine&apos;, &apos;Tab&apos;, &apos;  &apos;, &apos; &apos;, &apos;__&apos;]
+def specialNames = [&apos;Test Product&apos;, &apos;Product-1&apos;, &apos;Food_Item&apos;, &apos;Dish 2&apos;, &apos;Item.3&apos;, &apos;Food Co&apos;, &apos;Meal 5&apos;, &apos;Dish 6&apos;, &apos;Item 7&apos;, &apos;Food 8&apos;]
+
+def validPrices = [50, 80, 100, 120, 150, 200, 250, 300, 350, 400]
+def negativePrices = [-10, -50, -100, -150, -200, -250, -300, -350, -400, -500]
+def decimalPrices = [99.99, 149.50, 199.99, 249.75, 299.50]
+
+def descriptions = [&apos;Delicious dish&apos;, &apos;Spicy meal&apos;, &apos;Authentic recipe&apos;, &apos;Fresh ingredients&apos;, &apos;Chef special&apos;, &apos;Street food&apos;, &apos;Healthy option&apos;, &apos;Perfect meal&apos;, &apos;Family favorite&apos;, &apos;Local cuisine&apos;]
+def cuisines = [&apos;Nepali&apos;, &apos;Indian&apos;, &apos;Chinese&apos;, &apos;Italian&apos;, &apos;Thai&apos;, &apos;Mexican&apos;, &apos;Japanese&apos;, &apos;Korean&apos;, &apos;American&apos;, &apos;Continental&apos;]
+def categories = [[&apos;Appetizer&apos;], [&apos;Main Course&apos;], [&apos;Dessert&apos;], [&apos;Beverage&apos;], [&apos;Snack&apos;], [&apos;Breakfast&apos;], [&apos;Lunch&apos;], [&apos;Dinner&apos;], [&apos;Fast Food&apos;], [&apos;Traditional&apos;]]
+def tags = [[&apos;popular&apos;], [&apos;spicy&apos;], [&apos;vegetarian&apos;], [&apos;vegan&apos;], [&apos;gluten-free&apos;], [&apos;dairy-free&apos;], [&apos;organic&apos;], [&apos;halal&apos;], [&apos;recommended&apos;], [&apos;new&apos;]]
+
+def name, price, description, cuisine, category, tag, image
+
+switch(threadNum % 50) {
+    case 0..9:
+        name = validNames[threadNum % 10]
+        price = validPrices[threadNum % 10]
+        break
+    case 10..19:
+        name = validNames[threadNum % 10]
+        price = negativePrices[threadNum % 10]
+        break
+    case 20..29:
+        name = invalidNames[threadNum % 10]
+        price = validPrices[threadNum % 10]
+        break
+    case 30..34:
+        name = &apos;&apos;
+        price = validPrices[threadNum % 10]
+        break
+    case 35..39:
+        name = invalidNames[threadNum % 10]
+        price = &apos;&apos;
+        break
+    case 40..44:
+        name = validNames[threadNum % 10]
+        price = 0
+        break
+    case 45..49:
+        name = specialNames[threadNum % 10]
+        price = decimalPrices[threadNum % 5]
+        break
+}
+
+description = descriptions[threadNum % 10]
+cuisine = cuisines[threadNum % 10]
+category = categories[threadNum % 10]
+tag = tags[threadNum % 10]
+image = &apos;https://example.com/product&apos; + threadNum + &apos;.jpg&apos;
+
+def restaurantId = props.get(&apos;RESTAURANT_ID&apos;)
+
+def payload = [
+    name: name,
+    price: price,
+    description: description,
+    cuisine: cuisine,
+    categories: category,
+    tags: tag,
+    restaurantId: restaurantId,
+    image: image
+]
+
+vars.put(&apos;PAYLOAD&apos;, JsonOutput.toJson(payload))
+</stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="cacheKey">false</stringProp>
+        </JSR223PreProcessor>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="PUT Edit Product" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/admin/products/${__P(PRODUCT_ID)}</stringProp>
+          <stringProp name="HTTPSampler.method">PUT</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">${PAYLOAD}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth Header" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${__P(ADMIN_TOKEN)}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
