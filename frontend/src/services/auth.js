@@ -4,8 +4,8 @@ const AuthService = {
     login: async (email, password) => {
         const response = await api.post('/auth/login', { email, password });
         if (response.data.token) {
-            sessionStorage.setItem('token', response.data.token);
-            sessionStorage.setItem('user', JSON.stringify(response.data.user));
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         return response.data;
     },
@@ -16,8 +16,8 @@ const AuthService = {
     },
 
     logout: () => {
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         localStorage.removeItem('cart');
     },
 
@@ -34,8 +34,8 @@ const AuthService = {
     verifyPhoneOTP: async (phoneNumber, otp) => {
         const response = await api.post('/auth/verify-phone-otp', { phoneNumber, otp });
         if (response.data.token) {
-            sessionStorage.setItem('token', response.data.token);
-            sessionStorage.setItem('user', JSON.stringify(response.data.user));
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         return response.data;
     },
@@ -46,7 +46,7 @@ const AuthService = {
     },
 
     getCurrentUser: () => {
-        return JSON.parse(sessionStorage.getItem('user'));
+        return JSON.parse(localStorage.getItem('user'));
     }
 };
 
