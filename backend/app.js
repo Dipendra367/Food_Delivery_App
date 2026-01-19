@@ -4,8 +4,12 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const compression = require('compression');
 
 const app = express();
+
+// Enable compression
+app.use(compression());
 
 // Middleware
 app.use(cors({

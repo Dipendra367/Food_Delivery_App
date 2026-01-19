@@ -125,4 +125,7 @@ const userSchema = new mongoose.Schema({
   preferences: [String]
 }, { timestamps: true });
 
+// Add geospatial index for restaurant location
+userSchema.index({ 'restaurantDetails.address.coordinates': '2dsphere' });
+
 module.exports = mongoose.model('User', userSchema);
