@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Complete API Assignment",
+    "due_on": "2026-02-12T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Finish Postman Automation",
+    "due_on": "2026-02-13T00:00:00.000+05:30",
+    "status": "completed"
+  },
+  {
+    "title": "Validate GoREST Todos",
+    "due_on": "2026-02-14T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Submit Backend Homework",
+    "due_on": "2026-02-15T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Review REST API Tasks",
+    "due_on": "2026-02-16T00:00:00.000+05:30",
+    "status": "completed"
+  },
+  {
+    "title": "Practice API Assertions",
+    "due_on": "2026-02-17T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Prepare Automation Report",
+    "due_on": "2026-02-18T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Run Collection Runner",
+    "due_on": "2026-02-19T00:00:00.000+05:30",
+    "status": "completed"
+  },
+  {
+    "title": "Analyze API Responses",
+    "due_on": "2026-02-20T00:00:00.000+05:30",
+    "status": "pending"
+  },
+  {
+    "title": "Finalize API Project",
+    "due_on": "2026-02-21T00:00:00.000+05:30",
+    "status": "completed"
+  }
+]
